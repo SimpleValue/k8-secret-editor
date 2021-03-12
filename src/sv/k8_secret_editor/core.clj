@@ -13,20 +13,31 @@
         exit (:exit process-result)]
     (if (not= exit 0)
       (throw (ex-info "non-zero exit code"
-                      {:err (slurp (:err process-result))}))
+                      {:err (slurp (:err process-result))
+                       :exit (:exit process-result)}))
       process-result)))
 
-(defn get-secret
-  [{:keys [name]}]
+(defn get-secrets
+  [params]
   (-> (process/process
        ["kubectl"
         "get" "secret"
-        name
         "-o" "json"])
       (check-exit-code)
       (:out)
       (slurp)
       (json/parse-string true)))
+
+(defn get-secret
+  [{:keys [name] :as params}]
+  (->> (get-secrets params)
+       (:items)
+       (filter (fn [secret]
+                 (= (get-in secret
+                            [:metadata
+                             :name])
+                    name)))
+       (first)))
 
 (defn transform-data-vals
   [secret f]
@@ -50,8 +61,8 @@
 
 (defn get-text-secret
   [{:keys [name] :as params}]
-  (-> (get-secret params)
-      (to-text-vals)))
+  (some-> (get-secret params)
+          (to-text-vals)))
 
 (defn apply!
   [kubernetes-data]
@@ -90,6 +101,8 @@
       (apply!)))
 
 (comment
+  (get-secret {:name "dev-db-secret"})
+
   (def text-secret-params
     {:name "dev-db-secret"
      :data {:username "some-user"

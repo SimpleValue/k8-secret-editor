@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+clojure -M -e "(require 'sv.k8-secret-editor.edit) (sv.k8-secret-editor.edit/terminal-edit-text-secret! {:name \"dev-db-secret\"})"
